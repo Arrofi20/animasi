@@ -22,7 +22,9 @@ String[] sceneDialogText = {
   "Bima melihat foto ukiran Candi Prambanan di ponselnya.\nTeman-temannya sibuk dengan tren luar negeri.\n\nAris: \"Bima, lihat terus candi?\"\nBima: \"Aku suka sejarah.\"",
   "Teman-temannya mengejek Bima karena lebih suka budaya sendiri.\n\nAris: \"Pakai batik terus, nggak bosan?\"\nTeman: \"Harusnya lebih kekinian!\"",
   "Bima menjelaskan bahwa budaya adalah narasi dan jati diri bangsa.\n\nBima: \"Ini bukan bangunan tua. Ini cerita nenek moyang kita.\"",
-  "Teman-teman kembali ke dunianya.\nBima merasa terasing karena budaya mulai dilupakan."
+  "Teman-teman kembali ke dunianya.\nBima merasa terasing karena budaya mulai dilupakan.",
+  "Bima mengajak teman-temannya ke pameran seni kontemporer.\n\nBima: \"Ayo ikut aku.\"",
+  "Bima menunjukkan bahwa batik bisa dijadikan desain kontemporer tanpa kehilangan motifnya.\n\nBima: \"Batik juga bisa modern.\""
 };
 
 String[] narasiLines;
@@ -35,10 +37,10 @@ void setup() {
   noSmooth();
 
   bgLocations[0] = loadImage("bg1_modern_no_furniture.png");
-  // bgLocations[1] = loadImage("bg_pameran.png");        // TODO scene 5
-  // bgLocations[2] = loadImage("bg_batik_display.png");  // TODO scene 6
-  // bgLocations[3] = loadImage("bg_ukiran.png");          // TODO scene 7
-  // bgLocations[4] = loadImage("bg_prambanan.png");       // TODO scene 8
+  bgLocations[1] = loadImage("bg5_pameran_budaya.png");
+  bgLocations[2] = loadImage("bg6_batik_modern.png");
+  // bgLocations[3] = loadImage("bg7_ukiran_candi.png");   // TODO scene 7
+  // bgLocations[4] = loadImage("bg_prambanan.png");        // TODO scene 8
 
   for (int f = 0; f < 4; f++) {
     batikHp[f]   = loadImage("batik_hp_" + (f+1) + ".png");
@@ -81,28 +83,43 @@ void drawSceneContent() {
   float bimaY = floorLineY - bimaH;
   float friendsY = floorLineY - friendsH;
 
+  // Posisi friends tetap pakai anchor lama (supaya posisi mereka tidak berubah)
+  float friendsX = 20 + bimaW - 20;
+
+  // Bima digeser ke kanan agar lebih dekat ke teman, tapi tetap ada celah longgar
+  float bimaXClose = 20 + 100;
+
   switch (currentScene) {
     case 0: // scene 1: Bima pegang HP + teman
-      image(batikHp[currentFrame], 20, bimaY, bimaW, bimaH);
-      image(friends[currentFrame], 20 + bimaW - 20, friendsY, friendsW, friendsH);
+      image(batikHp[currentFrame], bimaXClose, bimaY, bimaW, bimaH);
+      image(friends[currentFrame], friendsX, friendsY, friendsW, friendsH);
       break;
 
     case 1: // scene 2: Bima idle + teman mengejek
-      image(batikIdle[currentFrame], 20, bimaY, bimaW, bimaH);
-      image(friends[currentFrame], 20 + bimaW - 20, friendsY, friendsW, friendsH);
+      image(batikIdle[currentFrame], bimaXClose, bimaY, bimaW, bimaH);
+      image(friends[currentFrame], friendsX, friendsY, friendsW, friendsH);
       break;
 
     case 2: // scene 3: Bima pegang HP, menjelaskan ke teman-teman
-      image(batikHp[currentFrame], 20, bimaY, bimaW, bimaH);
-      image(friends[currentFrame], 20 + bimaW - 20, friendsY, friendsW, friendsH);
+      image(batikHp[currentFrame], bimaXClose, bimaY, bimaW, bimaH);
+      image(friends[currentFrame], friendsX, friendsY, friendsW, friendsH);
       break;
 
     case 3: // scene 4: Bima maju ke depan (idle), teman tetap di posisi biasa
       float bimaFloorLineY4 = height * 0.88;
       float bimaY4 = bimaFloorLineY4 - bimaH;
       image(batikIdle[currentFrame], 20, bimaY4, bimaW, bimaH);
+      image(friends[currentFrame], friendsX, friendsY, friendsW, friendsH);
+      break;
 
-      image(friends[currentFrame], 20 + bimaW - 20, friendsY, friendsW, friendsH);
+    case 4: // scene 5: Bima idle + teman, sejajar seperti scene 1-3
+      image(batikIdle[currentFrame], bimaXClose, bimaY, bimaW, bimaH);
+      image(friends[currentFrame], friendsX, friendsY, friendsW, friendsH);
+      break;
+
+    case 5: // scene 6: Bima sendirian, digeser jauh ke kiri biar gak nutupin baju batik
+      float bimaX6 = width * 0.08;
+      image(batikIdle[currentFrame], bimaX6, bimaY, bimaW, bimaH);
       break;
   }
 }
@@ -139,12 +156,16 @@ void drawDialogBox() {
   float dialogSize = 17;
   float narasiLeading = narasiSize * 1.4;
   float dialogLeading = dialogSize * 1.5;
-  float sectionGap = (narasiLines.length > 0 && dialogLines.length > 0) ? 14 : 0;
-  float maxBoxW = width * 0.7;
+  float sectionGap = (narasiLines.length > 0 && dialogLines.length > 0) ? 20 : 0;
+  float maxBoxW = width * 0.7; // batas maksimum lebar kolom
 
+  // --- Hitung lebar teks terpanjang dari narasi & dialog ---
   float maxTextW = 0;
+
   textSize(narasiSize);
-  for (String line : narasiLines) maxTextW = max(maxTextW, textWidth(line));
+  for (String line : narasiLines) {
+    maxTextW = max(maxTextW, textWidth(line));
+  }
 
   textSize(dialogSize);
   for (String dLine : dialogLines) {
@@ -162,16 +183,41 @@ void drawDialogBox() {
 
   float textW = min(maxTextW, maxBoxW - padding * 2);
 
-  float narasiHeight = 0;
+  // --- Pre-wrap semua baris jadi array baris manual (biar tinggi & posisi gambar selalu presisi sama) ---
+  ArrayList<String> wrappedNarasi = new ArrayList<String>();
   textSize(narasiSize);
-  for (String line : narasiLines) narasiHeight += calcWrappedHeight(line, textW, narasiLeading);
+  for (String line : narasiLines) {
+    String[] w = wrapTextLines(line, textW);
+    for (String wl : w) wrappedNarasi.add(wl);
+  }
 
-  float dialogHeight = 0;
+  // Untuk dialog, simpan juga info speaker terpisah per baris asli
+  ArrayList<String[]> dialogWrapped = new ArrayList<String[]>(); // {speaker, wrappedLine, isFirstLine("1"/"0")}
   textSize(dialogSize);
-  for (String dLine : dialogLines) dialogHeight += calcWrappedHeight(dLine, textW, dialogLeading);
+  for (String dLine : dialogLines) {
+    int colonIndex = dLine.indexOf(":");
+    if (colonIndex != -1) {
+      String speaker = dLine.substring(0, colonIndex + 1);
+      String speech = dLine.substring(colonIndex + 1).trim();
+      float speakerW = textWidth(speaker + " ");
+      String[] wrappedSpeech = wrapTextLines(speech, textW - speakerW);
+      for (int i = 0; i < wrappedSpeech.length; i++) {
+        dialogWrapped.add(new String[]{speaker, wrappedSpeech[i], i == 0 ? "1" : "0"});
+      }
+    } else {
+      String[] wrapped = wrapTextLines(dLine, textW);
+      for (String wl : wrapped) {
+        dialogWrapped.add(new String[]{"", wl, "1"});
+      }
+    }
+  }
+
+  float narasiHeight = wrappedNarasi.size() * narasiLeading;
+  float dialogHeight = dialogWrapped.size() * dialogLeading;
 
   float boxW = textW + padding * 2;
   float boxH = padding * 2 + narasiHeight + sectionGap + dialogHeight;
+
   float bottomMargin = 40;
   float boxX = (width - boxW) / 2;
   float boxY = height - boxH - bottomMargin;
@@ -187,57 +233,64 @@ void drawDialogBox() {
   float cursorY = boxY + padding;
   float textX = boxX + padding;
 
+  // --- Gambar narasi ---
   textAlign(LEFT, TOP);
   textSize(narasiSize);
   fill(200, 200, 200);
-  for (String line : narasiLines) {
-    text(line, textX, cursorY, textW, 9999);
-    cursorY += calcWrappedHeight(line, textW, narasiLeading);
+  for (String line : wrappedNarasi) {
+    text(line, textX, cursorY);
+    cursorY += narasiLeading;
   }
 
-  if (narasiLines.length > 0 && dialogLines.length > 0) {
-    cursorY += sectionGap * 0.4;
+  // --- Garis pemisah (sekarang presisi karena tinggi narasi dihitung dari baris hasil wrap yang sama persis) ---
+  if (wrappedNarasi.size() > 0 && dialogWrapped.size() > 0) {
+    float lineY = cursorY + sectionGap * 0.5;
     stroke(255, 100);
     strokeWeight(1);
-    line(textX, cursorY, textX + textW, cursorY);
+    line(textX, lineY, textX + textW, lineY);
     noStroke();
-    cursorY += sectionGap * 0.6;
+    cursorY += sectionGap;
   }
 
+  // --- Gambar dialog ---
   textSize(dialogSize);
-  for (String dLine : dialogLines) {
-    int colonIndex = dLine.indexOf(":");
-    float lineH;
-    if (colonIndex != -1) {
-      String speaker = dLine.substring(0, colonIndex + 1);
-      String speech = dLine.substring(colonIndex + 1).trim();
-      fill(255, 220, 120);
-      text(speaker, textX, cursorY);
+  for (String[] d : dialogWrapped) {
+    String speaker = d[0];
+    String speechLine = d[1];
+    boolean isFirstLine = d[2].equals("1");
+
+    if (speaker.length() > 0) {
       float speakerW = textWidth(speaker + " ");
+      if (isFirstLine) {
+        fill(255, 220, 120);
+        text(speaker, textX, cursorY);
+      }
       fill(255);
-      text(speech, textX + speakerW, cursorY, textW - speakerW, 9999);
-      lineH = calcWrappedHeight(speech, textW - speakerW, dialogLeading);
+      text(speechLine, textX + speakerW, cursorY);
     } else {
       fill(255);
-      text(dLine, textX, cursorY, textW, 9999);
-      lineH = calcWrappedHeight(dLine, textW, dialogLeading);
+      text(speechLine, textX, cursorY);
     }
-    cursorY += lineH;
+    cursorY += dialogLeading;
   }
 }
 
-float calcWrappedHeight(String txt, float wrapWidth, float leading) {
+// Pecah teks jadi array baris sesuai lebar yang tersedia (word-wrap manual)
+String[] wrapTextLines(String txt, float wrapWidth) {
   String[] words = split(txt, " ");
+  ArrayList<String> lines = new ArrayList<String>();
   String currentLine = "";
-  int lineCount = 1;
+
   for (String w : words) {
     String testLine = currentLine.length() == 0 ? w : currentLine + " " + w;
     if (textWidth(testLine) > wrapWidth && currentLine.length() > 0) {
-      lineCount++;
+      lines.add(currentLine);
       currentLine = w;
     } else {
       currentLine = testLine;
     }
   }
-  return lineCount * leading;
+  if (currentLine.length() > 0) lines.add(currentLine);
+
+  return lines.toArray(new String[0]);
 }
