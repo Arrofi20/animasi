@@ -1,12 +1,15 @@
 // ===== BACKGROUND (per lokasi, bukan per scene) =====
-PImage[] bgLocations = new PImage[5]; // 0=cafe, 1=pameran, 2=batik display, 3=ukiran, 4=prambanan
+PImage[] bgLocations = new PImage[5]; // 0=cafe/modern, 1=pameran, 2=batik display, 3=ukiran candi, 4=prambanan
 
 int[] sceneBgIndex = {0, 0, 0, 0, 1, 2, 3, 4};
 
 // ===== ASET KARAKTER (dimuat sekali) =====
-PImage[] batikHp   = new PImage[4];
-PImage[] batikIdle = new PImage[4];
-PImage[] friends   = new PImage[4];
+PImage[] batikHp     = new PImage[4];
+PImage[] batikIdle   = new PImage[4];
+PImage[] batikNunjuk = new PImage[4]; // untuk scene 5, 6, 7
+PImage[] friends     = new PImage[4];
+PImage[] friendsHp2  = new PImage[4]; // untuk scene 1 & 4
+PImage[] friendsBatik = new PImage[4]; // untuk scene 8
 
 // ===== STATE ANIMASI =====
 int currentFrame = 0;
@@ -24,7 +27,9 @@ String[] sceneDialogText = {
   "Bima menjelaskan bahwa budaya adalah narasi dan jati diri bangsa.\n\nBima: \"Ini bukan bangunan tua. Ini cerita nenek moyang kita.\"",
   "Teman-teman kembali ke dunianya.\nBima merasa terasing karena budaya mulai dilupakan.",
   "Bima mengajak teman-temannya ke pameran seni kontemporer.\n\nBima: \"Ayo ikut aku.\"",
-  "Bima menunjukkan bahwa batik bisa dijadikan desain kontemporer tanpa kehilangan motifnya.\n\nBima: \"Batik juga bisa modern.\""
+  "Bima menunjukkan bahwa batik bisa dijadikan desain kontemporer tanpa kehilangan motifnya.\n\nBima: \"Batik juga bisa modern.\"",
+  "Aris mulai memperhatikan ukiran dan filosofi budaya.\n\nAris: \"Ternyata keren juga...\"",
+  "Teman-teman mulai menghargai budaya sendiri.\nMenjaga budaya bukan berarti menolak dunia.\n\n\"Kita hanya perlu ingat siapa diri kita.\""
 };
 
 String[] narasiLines;
@@ -39,13 +44,16 @@ void setup() {
   bgLocations[0] = loadImage("bg1_modern_no_furniture.png");
   bgLocations[1] = loadImage("bg5_pameran_budaya.png");
   bgLocations[2] = loadImage("bg6_batik_modern.png");
-  // bgLocations[3] = loadImage("bg7_ukiran_candi.png");   // TODO scene 7
-  // bgLocations[4] = loadImage("bg_prambanan.png");        // TODO scene 8
+  bgLocations[3] = loadImage("bg7_ukiran_candi.png");
+  bgLocations[4] = loadImage("bg8_prambanan.png");
 
   for (int f = 0; f < 4; f++) {
-    batikHp[f]   = loadImage("batik_hp_" + (f+1) + ".png");
-    batikIdle[f] = loadImage("batik_idle_" + (f+1) + ".png");
-    friends[f]   = loadImage("friends_" + (f+1) + ".png");
+    batikHp[f]      = loadImage("batik_hp_" + (f+1) + ".png");
+    batikIdle[f]    = loadImage("batik_idle_" + (f+1) + ".png");
+    batikNunjuk[f]  = loadImage("batik_nunjuk_frame" + (f+1) + ".png");
+    friends[f]      = loadImage("friends_" + (f+1) + ".png");
+    friendsHp2[f]   = loadImage("friends_hp2_frame" + (f+1) + ".png");
+    friendsBatik[f] = loadImage("friends_batik_frame" + (f+1) + ".png");
   }
 
   parseDialogText(sceneDialogText[currentScene]);
@@ -90,36 +98,58 @@ void drawSceneContent() {
   float bimaXClose = 20 + 100;
 
   switch (currentScene) {
-    case 0: // scene 1: Bima pegang HP + teman
+    case 0: // scene 1: Bima pegang HP + teman (friends_hp2)
       image(batikHp[currentFrame], bimaXClose, bimaY, bimaW, bimaH);
-      image(friends[currentFrame], friendsX, friendsY, friendsW, friendsH);
+      image(friendsHp2[currentFrame], friendsX, friendsY, friendsW, friendsH);
       break;
 
-    case 1: // scene 2: Bima idle + teman mengejek
+    case 1: // scene 2: Bima idle + teman mengejek (friends)
       image(batikIdle[currentFrame], bimaXClose, bimaY, bimaW, bimaH);
       image(friends[currentFrame], friendsX, friendsY, friendsW, friendsH);
       break;
 
-    case 2: // scene 3: Bima pegang HP, menjelaskan ke teman-teman
+    case 2: // scene 3: Bima pegang HP, menjelaskan ke teman-teman (friends)
       image(batikHp[currentFrame], bimaXClose, bimaY, bimaW, bimaH);
       image(friends[currentFrame], friendsX, friendsY, friendsW, friendsH);
       break;
 
-    case 3: // scene 4: Bima maju ke depan (idle), teman tetap di posisi biasa
+    case 3: // scene 4: Bima maju ke depan (idle), teman (friends_hp2)
       float bimaFloorLineY4 = height * 0.88;
       float bimaY4 = bimaFloorLineY4 - bimaH;
       image(batikIdle[currentFrame], 20, bimaY4, bimaW, bimaH);
+      image(friendsHp2[currentFrame], friendsX, friendsY, friendsW, friendsH);
+      break;
+
+    case 4: // scene 5: Bima menunjuk + teman (friends), sejajar seperti scene 1-3
+      image(batikNunjuk[currentFrame], bimaXClose, bimaY, bimaW, bimaH);
       image(friends[currentFrame], friendsX, friendsY, friendsW, friendsH);
       break;
 
-    case 4: // scene 5: Bima idle + teman, sejajar seperti scene 1-3
-      image(batikIdle[currentFrame], bimaXClose, bimaY, bimaW, bimaH);
-      image(friends[currentFrame], friendsX, friendsY, friendsW, friendsH);
+    case 5: // scene 6: Bima menunjuk, sendirian, digeser sedikit ke kanan
+      float bimaX6 = width * 0.14;
+      image(batikNunjuk[currentFrame], bimaX6, bimaY, bimaW, bimaH);
       break;
 
-    case 5: // scene 6: Bima sendirian, digeser jauh ke kiri biar gak nutupin baju batik
-      float bimaX6 = width * 0.08;
-      image(batikIdle[currentFrame], bimaX6, bimaY, bimaW, bimaH);
+    case 6: // scene 7: Bima menunjuk, sendirian (di depan ukiran candi)
+      float bimaX7 = width * 0.08;
+      image(batikNunjuk[currentFrame], bimaX7, bimaY, bimaW, bimaH);
+      break;
+
+    case 7: // scene 8: Bima idle + teman (friends_batik), diperkecil lagi & digeser ke kanan biar ke tengah
+      float scaleBima8 = scaleBima * 0.75;
+      float scaleFriends8 = scaleFriends * 0.75;
+      float bimaW8 = 128 * scaleBima8;
+      float bimaH8 = 128 * scaleBima8;
+      float friendsW8 = 384 * scaleFriends8;
+      float friendsH8 = 128 * scaleFriends8;
+      float floorLineY8 = height * 0.82;
+      float bimaY8 = floorLineY8 - bimaH8;
+      float friendsY8 = floorLineY8 - friendsH8;
+      float shiftRight8 = width * 0.12; // geser grup ke kanan biar lebih ke tengah
+      float bimaXClose8 = 20 + 100 + shiftRight8;
+      float friendsX8 = 20 + bimaW8 - 20 + shiftRight8;
+      image(batikIdle[currentFrame], bimaXClose8, bimaY8, bimaW8, bimaH8);
+      image(friendsBatik[currentFrame], friendsX8, friendsY8, friendsW8, friendsH8);
       break;
   }
 }
@@ -238,7 +268,16 @@ void drawDialogBox() {
   textSize(narasiSize);
   fill(200, 200, 200);
   for (String line : wrappedNarasi) {
-    text(line, textX, cursorY);
+    // Baris kutipan (diawali & diakhiri tanda petik) ditengahkan dalam kotak,
+    // supaya tidak menjorok mepet ke kiri seperti narasi biasa.
+    if (line.startsWith("\"") && line.endsWith("\"")) {
+      float lineW = textWidth(line);
+      float centerOffset = (textW - lineW) / 2;
+      if (centerOffset < 0) centerOffset = 0;
+      text(line, textX + centerOffset, cursorY);
+    } else {
+      text(line, textX, cursorY);
+    }
     cursorY += narasiLeading;
   }
 
