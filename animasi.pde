@@ -39,10 +39,11 @@ int[] sceneBgIndex = {0, 0, 0, 0, 1, 2, 3, 4};
 // ===== ASET KARAKTER (dimuat sekali) =====
 PImage[] batikHp     = new PImage[4];
 PImage[] batikIdle   = new PImage[4];
-PImage[] batikNunjuk = new PImage[4]; // untuk scene 5, 6, 7
+PImage[] batikNunjuk = new PImage[4]; // untuk scene 5, 6
 PImage[] friends     = new PImage[4];
 PImage[] friendsHp2  = new PImage[4]; // untuk scene 1 & 4
 PImage[] friendsBatik = new PImage[4]; // untuk scene 8
+PImage[] arisFrame   = new PImage[4]; // untuk scene 7
 
 // ===== STATE ANIMASI =====
 int currentFrame = 0;
@@ -89,6 +90,7 @@ void setup() {
     friends[f]      = loadImage("friends_" + (f+1) + ".png");
     friendsHp2[f]   = loadImage("friends_hp2_frame" + (f+1) + ".png");
     friendsBatik[f] = loadImage("friends_batik_frame" + (f+1) + ".png");
+    arisFrame[f]    = loadImage("aris_frame" + (f+1) + ".png");
   }
 
   parseDialogText(sceneDialogText[currentScene]);
@@ -264,9 +266,14 @@ void drawSceneContent() {
       image(batikNunjuk[currentFrame], bimaX6, bimaY, bimaW, bimaH);
       break;
 
-    case 6: // scene 7: Bima menunjuk, sendirian (di depan ukiran candi)
-      float bimaX7 = width * 0.08;
-      image(batikNunjuk[currentFrame], bimaX7, bimaY, bimaW, bimaH);
+    case 6: // scene 7: Aris sendirian (di depan ukiran candi) - ukuran disesuaikan rasio asli gambar agar tidak gepeng
+      PImage arisImg = arisFrame[currentFrame];
+      float arisH7 = bimaH * 0.8; // tinggi disamakan dengan tinggi karakter Bima biasa
+      float arisAspect = (float) arisImg.width / (float) arisImg.height;
+      float arisW7 = arisH7 * arisAspect; // lebar dihitung proporsional, bukan dipaksa sama dengan bimaW
+      float arisX7 = width * 0.15;
+      float arisY7 = floorLineY - arisH7;
+      image(arisImg, arisX7, arisY7, arisW7, arisH7);
       break;
 
     case 7: // scene 8: Bima idle + teman (friends_batik), diperkecil & digeser ke kanan biar ke tengah
