@@ -1,3 +1,36 @@
+import ddf.minim.*;
+import java.util.HashMap;
+
+// ===== AUDIO =====
+Minim minim;
+AudioPlayer bgMusic;
+HashMap<String, AudioPlayer> audioClips = new HashMap<String, AudioPlayer>();
+
+// urutan audio per scene, sesuai dialog masing-masing scene
+String[][] sceneAudioSequence = {
+  {"narasi1", "aris1", "bima1"},   // scene 1
+  {"narasi2", "aris2", "teman2"},  // scene 2
+  {"narasi3", "bima3"},            // scene 3
+  {"narasi4"},                     // scene 4
+  {"narasi5", "bima5"},            // scene 5
+  {"narasi6", "bima6"},            // scene 6
+  {"narasi7", "aris7"},            // scene 7
+  {"narasi8"}                      // scene 8
+};
+
+int audioQueueIndex = 0;
+AudioPlayer currentClip = null;
+
+boolean waitingForNextClip = false;
+int waitUntilTime = 0;
+
+boolean sceneAudioFinished = false;
+int sceneEndHoldStart = 0;
+int sceneEndHoldDuration = 2500; // jeda 2.5 detik sebelum pindah scene otomatis
+
+int gapAfterNarasi = 3000;   // 3 detik jeda setelah narasi
+int gapBetweenDialog = 1000; // 1 detik jeda antar dialog
+
 // ===== BACKGROUND (per lokasi, bukan per scene) =====
 PImage[] bgLocations = new PImage[5]; // 0=cafe/modern, 1=pameran, 2=batik display, 3=ukiran candi, 4=prambanan
 
@@ -24,7 +57,7 @@ int currentScene = 0;
 String[] sceneDialogText = {
   "Bima melihat foto ukiran Candi Prambanan di ponselnya.\nTeman-temannya sibuk dengan tren luar negeri.\n\nAris: \"Bima, lihat terus candi?\"\nBima: \"Aku suka sejarah.\"",
   "Teman-temannya mengejek Bima karena lebih suka budaya sendiri.\n\nAris: \"Pakai batik terus, nggak bosan?\"\nTeman: \"Harusnya lebih kekinian!\"",
-  "Bima menjelaskan bahwa budaya adalah narasi dan jati diri bangsa.\n\nBima: \"Ini bukan bangunan tua. Ini cerita nenek moyang kita.\"",
+  "Bima menjelaskan bahwa budaya adalah narasi dan jati diri bangsa.\n\nBima: \"Ini bukan bangunan tua. Ini cerita rakyat nenek moyang kita.\"",
   "Teman-teman kembali ke dunianya.\nBima merasa terasing karena budaya mulai dilupakan.",
   "Bima mengajak teman-temannya ke pameran seni kontemporer.\n\nBima: \"Ayo ikut aku.\"",
   "Bima menunjukkan bahwa batik bisa dijadikan desain kontemporer tanpa kehilangan motifnya.\n\nBima: \"Batik juga bisa modern.\"",
@@ -40,6 +73,8 @@ void setup() {
   surface.setSize(displayWidth, displayHeight);
   surface.setLocation(0, 0);
   noSmooth();
+
+  setupAudio();
 
   bgLocations[0] = loadImage("bg1_modern_no_furniture.png");
   bgLocations[1] = loadImage("bg5_pameran_budaya.png");
@@ -57,7 +92,107 @@ void setup() {
   }
 
   parseDialogText(sceneDialogText[currentScene]);
+  playSceneAudio(currentScene);
 }
+
+// ===================== AUDIO =====================
+
+void setupAudio() {
+  minim = new Minim(this);
+
+  bgMusic = minim.loadFile("bgm.mp3");
+  if (bgMusic != null) {
+    bgMusic.loop();
+    bgMusic.setGain(-15);
+  } else {
+    println("bgm.mp3 belum ditemukan - musik latar di-skip untuk sekarang.");
+  }
+
+  String[] allNames = {
+    "narasi1","narasi2","narasi3","narasi4","narasi5","narasi6","narasi7","narasi8",
+    "aris1","aris2","aris7",
+    "bima1","bima3","bima5","bima6",
+    "teman2"
+  };
+  for (String name : allNames) {
+    AudioPlayer clip = minim.loadFile(name + ".mp3");
+    if (clip != null) {
+      audioClips.put(name, clip);
+    } else {
+      println("File audio " + name + ".mp3 tidak ditemukan.");
+    }
+  }
+}
+
+void playSceneAudio(int sceneIndex) {
+  audioQueueIndex = 0;
+  waitingForNextClip = false;
+  sceneAudioFinished = false;
+  playClipAtIndex(sceneIndex, 0);
+}
+
+void playClipAtIndex(int sceneIndex, int idx) {
+  String[] queue = sceneAudioSequence[sceneIndex];
+  if (idx >= queue.length) {
+    currentClip = null;
+    sceneAudioFinished = true;
+    sceneEndHoldStart = millis();
+    return;
+  }
+  String clipName = queue[idx];
+  AudioPlayer clip = audioClips.get(clipName);
+  if (clip != null) {
+    clip.rewind();
+    clip.play();
+    currentClip = clip;
+  } else {
+    playClipAtIndex(sceneIndex, idx + 1);
+  }
+}
+
+void updateAudioQueue() {
+  if (currentClip != null) {
+    if (currentClip.isPlaying()) {
+      return;
+    } else {
+      if (!waitingForNextClip) {
+        waitingForNextClip = true;
+        int gap = (audioQueueIndex == 0) ? gapAfterNarasi : gapBetweenDialog;
+        waitUntilTime = millis() + gap;
+        currentClip = null;
+      }
+    }
+  } else if (waitingForNextClip) {
+    if (millis() >= waitUntilTime) {
+      waitingForNextClip = false;
+      audioQueueIndex++;
+      playClipAtIndex(currentScene, audioQueueIndex);
+    }
+  } else if (sceneAudioFinished) {
+    if (millis() - sceneEndHoldStart >= sceneEndHoldDuration) {
+      goToNextScene();
+    }
+  }
+}
+
+void goToNextScene() {
+  currentScene = (currentScene + 1) % sceneDialogText.length;
+  currentFrame = 0;
+  parseDialogText(sceneDialogText[currentScene]);
+  playSceneAudio(currentScene);
+}
+
+void stopCurrentSceneAudio() {
+  if (currentClip != null) {
+    currentClip.pause();
+    currentClip.rewind();
+  }
+  currentClip = null;
+  waitingForNextClip = false;
+  sceneAudioFinished = false;
+}
+
+// ===================== VISUAL =====================
 
 void draw() {
   background(0);
@@ -80,6 +215,8 @@ void draw() {
 
   drawSceneContent();
   drawDialogBox();
+
+  updateAudioQueue();
 }
 
 void drawSceneContent() {
@@ -91,10 +228,7 @@ void drawSceneContent() {
   float bimaY = floorLineY - bimaH;
   float friendsY = floorLineY - friendsH;
 
-  // Posisi friends tetap pakai anchor lama (supaya posisi mereka tidak berubah)
   float friendsX = 20 + bimaW - 20;
-
-  // Bima digeser ke kanan agar lebih dekat ke teman, tapi tetap ada celah longgar
   float bimaXClose = 20 + 100;
 
   switch (currentScene) {
@@ -135,7 +269,7 @@ void drawSceneContent() {
       image(batikNunjuk[currentFrame], bimaX7, bimaY, bimaW, bimaH);
       break;
 
-    case 7: // scene 8: Bima idle + teman (friends_batik), diperkecil lagi & digeser ke kanan biar ke tengah
+    case 7: // scene 8: Bima idle + teman (friends_batik), diperkecil & digeser ke kanan biar ke tengah
       float scaleBima8 = scaleBima * 0.75;
       float scaleFriends8 = scaleFriends * 0.75;
       float bimaW8 = 128 * scaleBima8;
@@ -145,7 +279,7 @@ void drawSceneContent() {
       float floorLineY8 = height * 0.82;
       float bimaY8 = floorLineY8 - bimaH8;
       float friendsY8 = floorLineY8 - friendsH8;
-      float shiftRight8 = width * 0.12; // geser grup ke kanan biar lebih ke tengah
+      float shiftRight8 = width * 0.12;
       float bimaXClose8 = 20 + 100 + shiftRight8;
       float friendsX8 = 20 + bimaW8 - 20 + shiftRight8;
       image(batikIdle[currentFrame], bimaXClose8, bimaY8, bimaW8, bimaH8);
@@ -156,9 +290,8 @@ void drawSceneContent() {
 
 void keyPressed() {
   if (key == ' ') {
-    currentScene = (currentScene + 1) % sceneDialogText.length;
-    currentFrame = 0;
-    parseDialogText(sceneDialogText[currentScene]);
+    stopCurrentSceneAudio();
+    goToNextScene();
   }
 }
 
@@ -187,9 +320,8 @@ void drawDialogBox() {
   float narasiLeading = narasiSize * 1.4;
   float dialogLeading = dialogSize * 1.5;
   float sectionGap = (narasiLines.length > 0 && dialogLines.length > 0) ? 20 : 0;
-  float maxBoxW = width * 0.7; // batas maksimum lebar kolom
+  float maxBoxW = width * 0.7;
 
-  // --- Hitung lebar teks terpanjang dari narasi & dialog ---
   float maxTextW = 0;
 
   textSize(narasiSize);
@@ -213,7 +345,6 @@ void drawDialogBox() {
 
   float textW = min(maxTextW, maxBoxW - padding * 2);
 
-  // --- Pre-wrap semua baris jadi array baris manual (biar tinggi & posisi gambar selalu presisi sama) ---
   ArrayList<String> wrappedNarasi = new ArrayList<String>();
   textSize(narasiSize);
   for (String line : narasiLines) {
@@ -221,8 +352,7 @@ void drawDialogBox() {
     for (String wl : w) wrappedNarasi.add(wl);
   }
 
-  // Untuk dialog, simpan juga info speaker terpisah per baris asli
-  ArrayList<String[]> dialogWrapped = new ArrayList<String[]>(); // {speaker, wrappedLine, isFirstLine("1"/"0")}
+  ArrayList<String[]> dialogWrapped = new ArrayList<String[]>();
   textSize(dialogSize);
   for (String dLine : dialogLines) {
     int colonIndex = dLine.indexOf(":");
@@ -263,13 +393,10 @@ void drawDialogBox() {
   float cursorY = boxY + padding;
   float textX = boxX + padding;
 
-  // --- Gambar narasi ---
   textAlign(LEFT, TOP);
   textSize(narasiSize);
   fill(200, 200, 200);
   for (String line : wrappedNarasi) {
-    // Baris kutipan (diawali & diakhiri tanda petik) ditengahkan dalam kotak,
-    // supaya tidak menjorok mepet ke kiri seperti narasi biasa.
     if (line.startsWith("\"") && line.endsWith("\"")) {
       float lineW = textWidth(line);
       float centerOffset = (textW - lineW) / 2;
@@ -281,7 +408,6 @@ void drawDialogBox() {
     cursorY += narasiLeading;
   }
 
-  // --- Garis pemisah (sekarang presisi karena tinggi narasi dihitung dari baris hasil wrap yang sama persis) ---
   if (wrappedNarasi.size() > 0 && dialogWrapped.size() > 0) {
     float lineY = cursorY + sectionGap * 0.5;
     stroke(255, 100);
@@ -291,7 +417,6 @@ void drawDialogBox() {
     cursorY += sectionGap;
   }
 
-  // --- Gambar dialog ---
   textSize(dialogSize);
   for (String[] d : dialogWrapped) {
     String speaker = d[0];
@@ -314,7 +439,6 @@ void drawDialogBox() {
   }
 }
 
-// Pecah teks jadi array baris sesuai lebar yang tersedia (word-wrap manual)
 String[] wrapTextLines(String txt, float wrapWidth) {
   String[] words = split(txt, " ");
   ArrayList<String> lines = new ArrayList<String>();
@@ -332,4 +456,13 @@ String[] wrapTextLines(String txt, float wrapWidth) {
   if (currentLine.length() > 0) lines.add(currentLine);
 
   return lines.toArray(new String[0]);
+}
+
+void stop() {
+  if (bgMusic != null) bgMusic.close();
+  for (AudioPlayer clip : audioClips.values()) {
+    clip.close();
+  }
+  minim.stop();
+  super.stop();
 }
